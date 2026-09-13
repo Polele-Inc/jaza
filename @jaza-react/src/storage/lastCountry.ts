@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'jaza:lastCountry:';
+const STORAGE_PREFIX = 'jaza:lastCountry:v2:';
 
 export function lastCountryStorageKey(publishableKey: string): string {
   return `${STORAGE_PREFIX}${publishableKey}`;

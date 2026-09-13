@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'jaza:lastCountry:';
+const STORAGE_PREFIX = 'jaza:lastCountry:v2:';
 
 type StorageLike = {
   getItem: (key: string) => Promise<string | null>;

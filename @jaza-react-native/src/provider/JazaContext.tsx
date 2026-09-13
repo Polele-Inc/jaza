@@ -47,6 +47,8 @@ export type JazaContextValue = {
   ledgerRevision: number;
   /** Notify widgets after host-side consume / wallet changes. */
   notifyWalletChanged: () => Promise<void>;
+  /** Session customer id when authenticated via init. */
+  customerId: string | null;
   /** Features from last init snapshot (empty until session auth) */
   features: InitFeature[];
   getFeatureCost: (featureCode: string) => number | null;

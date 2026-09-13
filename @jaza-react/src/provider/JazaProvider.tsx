@@ -28,6 +28,7 @@ import {
   pickDefaultCurrencyCode,
   type EnrichedCountry,
 } from '../utils/helpers.js';
+import { pickDefaultCountry } from '../utils/pickDefaultCountry.js';
 import {
   canAffordFeature,
   getFeatureCost as lookupFeatureCost,
@@ -39,6 +40,12 @@ import {
   type ThemePreference,
 } from '../theme/tokens.js';
 import type { JazaLocale } from '../i18n/types.js';
+import { jazaCache } from '../cache/createCache.js';
+import { useResource } from '../cache/useResource.js';
+import {
+  readLastUsedCountryIso2,
+  writeLastUsedCountryIso2,
+} from '../storage/lastCountry.js';
 import { JazaContext, type ResultPhase, type TopUpSource, type TopUpStep } from './JazaContext.js';
 import { TopUpDrawer } from '../sheet/TopUpDrawer.js';
 
@@ -178,20 +185,58 @@ export function JazaProvider({
   );
   const [authError, setAuthError] = useState<string | null>(null);
   const [features, setFeatures] = useState<InitFeature[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [ledgerRevision, setLedgerRevision] = useState(0);
+  const customerIdRef = useRef<string | null>(null);
+  customerIdRef.current = customerId;
 
   const bumpLedgerRevision = useCallback(() => {
     setLedgerRevision((n) => n + 1);
   }, []);
 
+  const walletKey =
+    useSessionAuth && customerId ? `wallet:${customerId}` : null;
+
+  const walletResource = useResource(
+    walletKey,
+    () => client.getWallet(),
+    { revalidateOnFocus: true, dedupingInterval: 2000 },
+  );
+
+  useEffect(() => {
+    if (!useSessionAuth) return;
+    if (walletResource.data) {
+      setBalance(walletResource.data.balanceCredits);
+      setBalanceError(null);
+    }
+    if (walletResource.error) {
+      setBalanceError(walletResource.error.message);
+    }
+    setBalanceLoading(
+      walletResource.isLoading ||
+        (walletResource.isValidating && walletResource.data === undefined),
+    );
+  }, [
+    useSessionAuth,
+    walletResource.data,
+    walletResource.error,
+    walletResource.isLoading,
+    walletResource.isValidating,
+  ]);
+
   const applyInitResult = useCallback(
     (result: InitResult) => {
       client.setSessionToken(result.sessionToken);
+      setCustomerId(result.customerId);
+      customerIdRef.current = result.customerId;
       setFeatures(result.features ?? []);
       setBalance(result.wallet.balanceCredits);
+      void jazaCache.mutate(`wallet:${result.customerId}`, {
+        balanceCredits: result.wallet.balanceCredits,
+      });
       setStatus('AUTHENTICATED');
       setAuthError(null);
       setBalanceError(null);
@@ -215,6 +260,8 @@ export function JazaProvider({
       const error =
         err instanceof Error ? err : new Error('Jaza session handshake failed');
       client.setSessionToken(null);
+      setCustomerId(null);
+      customerIdRef.current = null;
       setFeatures([]);
       setBalance(null);
       setAuthError(error.message);
@@ -238,7 +285,14 @@ export function JazaProvider({
             return;
           }
         }
-        const wallet = await client.getWallet();
+        const id = customerIdRef.current;
+        const wallet = id
+          ? await jazaCache.revalidate(
+              `wallet:${id}`,
+              () => client.getWallet(),
+              { dedupingInterval: 0 },
+            )
+          : await client.getWallet();
         setBalance(wallet.balanceCredits);
         setStatus('AUTHENTICATED');
       } else {
@@ -326,6 +380,7 @@ export function JazaProvider({
   const predictTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStarted = useRef<number | null>(null);
+  const selectedCountryRef = useRef<EnrichedCountry | null>(null);
 
   const clearPoll = useCallback(() => {
     if (pollTimer.current) {
@@ -346,26 +401,35 @@ export function JazaProvider({
     setResultPhase('loading');
   }, []);
 
-  const setSelectedCountry = useCallback((country: EnrichedCountry | null) => {
-    setSelectedCountryState(country);
-    setPhoneNational('');
-    setPredict(null);
-    setPredictError(null);
-    if (country && country.currencies.length > 0) {
-      const codes = country.currencies.map((c) => c.code);
-      setSelectedCurrencyCode(pickDefaultCurrencyCode(codes));
-    } else {
-      setSelectedCurrencyCode(null);
-    }
-  }, []);
+  const setSelectedCountry = useCallback(
+    (country: EnrichedCountry | null) => {
+      setSelectedCountryState(country);
+      selectedCountryRef.current = country;
+      setPhoneNational('');
+      setPredict(null);
+      setPredictError(null);
+      if (country) {
+        void writeLastUsedCountryIso2(publishableKey, country.iso2);
+      }
+      if (country && country.currencies.length > 0) {
+        const codes = country.currencies.map((c) => c.code);
+        setSelectedCurrencyCode(pickDefaultCurrencyCode(codes));
+      } else {
+        setSelectedCurrencyCode(null);
+      }
+    },
+    [publishableKey],
+  );
 
   const loadSessionData = useCallback(async () => {
     setBundlesLoading(true);
     setBundlesError(null);
     try {
-      const [bundleList, catalogCountries] = await Promise.all([
+      const [bundleList, catalogCountries, geo, lastUsed] = await Promise.all([
         client.listBundles(),
         client.listCountries(),
+        client.getGeo().catch(() => null),
+        readLastUsedCountryIso2(publishableKey),
       ]);
       const active = bundleList
         .filter((b) => b.isActive)
@@ -379,14 +443,17 @@ export function JazaProvider({
       const enriched = enrichCountries(catalogCountries);
       setCountries(enriched);
       if (enriched.length > 0) {
-        setSelectedCountryState((prev) => {
-          if (prev) return prev;
-          return enriched.find((c) => c.iso2 === 'CD') ?? enriched[0]!;
+        const preferred = pickDefaultCountry(enriched, {
+          lastUsedIso2: lastUsed,
+          suggestedIso2: geo?.countryIso2 ?? null,
         });
+        setSelectedCountryState((prev) => prev ?? preferred);
+        if (!selectedCountryRef.current && preferred) {
+          selectedCountryRef.current = preferred;
+        }
         setSelectedCurrencyCode((prev) => {
           if (prev) return prev;
-          const country =
-            enriched.find((c) => c.iso2 === 'CD') ?? enriched[0]!;
+          const country = preferred ?? enriched[0]!;
           const codes = country.currencies.map((c) => c.code);
           return pickDefaultCurrencyCode(codes);
         });
@@ -400,7 +467,7 @@ export function JazaProvider({
     } finally {
       setBundlesLoading(false);
     }
-  }, [client]);
+  }, [client, publishableKey]);
 
   const openTopUpInternal = useCallback(
     async (source: TopUpSource, featureCode?: string | null) => {
@@ -418,6 +485,7 @@ export function JazaProvider({
       setStep('offer');
       resetPaymentState();
       setSelectedCountryState(null);
+      selectedCountryRef.current = null;
       setSelectedCurrencyCode(null);
       setPhoneNational('');
       setBundlesError(null);
@@ -518,6 +586,12 @@ export function JazaProvider({
               setResultPhase('success');
               await refreshBalance();
               bumpLedgerRevision();
+              if (selectedCountryRef.current) {
+                void writeLastUsedCountryIso2(
+                  publishableKey,
+                  selectedCountryRef.current.iso2,
+                );
+              }
               onTopUpComplete?.({
                 depositId: updated.id,
                 credits,
@@ -537,7 +611,7 @@ export function JazaProvider({
         })();
       }, POLL_INTERVAL_MS);
     },
-    [bumpLedgerRevision, clearPoll, client, onTopUpComplete, refreshBalance],
+    [bumpLedgerRevision, clearPoll, client, onTopUpComplete, publishableKey, refreshBalance],
   );
 
   const submitDeposit = useCallback(async () => {
@@ -700,6 +774,7 @@ export function JazaProvider({
       refreshBalance,
       ledgerRevision,
       notifyWalletChanged,
+      customerId,
       features,
       getFeatureCost: getFeatureCostFn,
       canAfford: canAffordFn,
@@ -756,6 +831,7 @@ export function JazaProvider({
       refreshBalance,
       ledgerRevision,
       notifyWalletChanged,
+      customerId,
       features,
       getFeatureCostFn,
       canAffordFn,

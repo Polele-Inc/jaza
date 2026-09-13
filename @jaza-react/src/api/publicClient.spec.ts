@@ -32,6 +32,26 @@ describe('PublicClient session auth', () => {
     );
   });
 
+  it('getGeo hits public catalog endpoint without auth', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe('https://api.jaza.dev/v1/catalog/geo');
+      const headers = new Headers(init?.headers);
+      expect(headers.get('Authorization')).toBeNull();
+      return new Response(
+        JSON.stringify({ countryIso2: 'KE', source: 'cf' }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new PublicClient({
+      publishableKey: 'jz_test_pk_x',
+      apiBaseUrl: 'https://api.jaza.dev',
+    });
+    const geo = await client.getGeo();
+    expect(geo).toEqual({ countryIso2: 'KE', source: 'cf' });
+  });
+
   it('getWallet without session throws 401', async () => {
     const client = new PublicClient({ publishableKey: 'jz_test_pk_x' });
     await expect(client.getWallet()).rejects.toMatchObject({

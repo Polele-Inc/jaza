@@ -129,6 +129,12 @@ export type ClientLedgerPage = {
   nextCursor?: string | null;
 };
 
+/** Soft country hint from GET /v1/catalog/geo */
+export type GeoHint = {
+  countryIso2: string | null;
+  source: 'cf' | 'ip' | 'unknown';
+};
+
 export type JazaAuthStatus =
   | 'INITIALIZING'
   | 'AUTHENTICATED'

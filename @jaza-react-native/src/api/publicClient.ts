@@ -5,6 +5,7 @@ import type {
   ClientLedgerPage,
   ClientTopUpSession,
   ClientWallet,
+  GeoHint,
   PredictProviderResponse,
   PublicDeposit,
   QuotePaymentResponse,
@@ -56,6 +57,11 @@ export class PublicClient {
 
   async listCountries(): Promise<CatalogCountry[]> {
     return this.request<CatalogCountry[]>('GET', '/v1/catalog/countries');
+  }
+
+  /** Soft IP/edge country hint for top-up defaults (public, no auth). */
+  async getGeo(): Promise<GeoHint> {
+    return this.request<GeoHint>('GET', '/v1/catalog/geo');
   }
 
   async listBundles(): Promise<Bundle[]> {

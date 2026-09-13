@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { BalanceCardSkeleton } from '../components/BalanceCardSkeleton.js';
 import { Icon } from '../components/Icon.js';
 import { t } from '../i18n/t.js';
@@ -29,10 +29,6 @@ export function JazaBalance({ style, children }: JazaBalanceProps) {
     refreshBalance,
   } = useJaza();
   const { colors, spacing, radius } = theme;
-
-  useEffect(() => {
-    void refreshBalance();
-  }, [refreshBalance]);
 
   const renderProps: JazaBalanceRenderProps = {
     balanceCredits,

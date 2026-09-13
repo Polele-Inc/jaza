@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useMemo, useState, type ComponentType } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,6 +9,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import type { ClientLedgerPage } from '../api/types.js';
+import { useInfiniteResource } from '../cache/useInfiniteResource.js';
 import { Icon } from '../components/Icon.js';
 import { LedgerListSkeleton } from '../components/LedgerListSkeleton.js';
 import { t } from '../i18n/t.js';
@@ -244,85 +246,79 @@ export function JazaLedger({
   style,
   ItemComponent = DefaultLedgerItem,
 }: JazaLedgerProps) {
-  const { theme, client, status, ledgerRevision, locale } = useJaza();
+  const { theme, client, status, ledgerRevision, locale, customerId } =
+    useJaza();
   const { colors, spacing } = theme;
 
-  const [items, setItems] = useState<JazaLedgerItemProps[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  // Start true so the first paint is skeleton, not the empty placeholder.
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const pageSize = mode === 'preview' ? limit : Math.max(limit, 20);
+  const cachePrefix = customerId ? `ledger:${customerId}:` : undefined;
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchPage = useCallback(
-    async (opts: { cursor?: string; replace: boolean }) => {
-      const page = await client.listLedger({
-        limit: pageSize,
-        cursor: opts.cursor,
-      });
-      const mapped = page.items.map((entry) =>
-        toLedgerItemProps(entry, {
-          subtitleStyle: mode === 'preview' ? 'date-time' : 'time',
-          locale,
-        }),
-      );
-      setItems((prev) => (opts.replace ? mapped : [...prev, ...mapped]));
-      setNextCursor(page.nextCursor ?? null);
+  const getKey = useCallback(
+    (index: number, previousPage: ClientLedgerPage | null) => {
+      if (!customerId) return null;
+      if (index === 0) return `ledger:${customerId}:`;
+      const cursor = previousPage?.nextCursor;
+      if (!cursor) return null;
+      return `ledger:${customerId}:${cursor}`;
     },
-    [client, locale, mode, pageSize],
+    [customerId],
   );
 
-  const loadInitial = useCallback(async () => {
-    if (status !== 'AUTHENTICATED') {
-      // Stay in loading until auth is ready — avoid empty flash.
-      setLoading(true);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await fetchPage({ replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t(locale, 'ledger.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchPage, locale, status]);
+  const fetchPage = useCallback(
+    async (pageKey: string) => {
+      const cursor = pageKey.split(':').slice(2).join(':') || undefined;
+      return client.listLedger({
+        limit: pageSize,
+        cursor: cursor || undefined,
+      });
+    },
+    [client, pageSize],
+  );
 
-  useEffect(() => {
-    void loadInitial();
-  }, [loadInitial, ledgerRevision]);
+  const {
+    pages,
+    setSize,
+    error,
+    isLoading,
+    isLoadingMore,
+    mutate,
+  } = useInfiniteResource(getKey, fetchPage, {
+    enabled: status === 'AUTHENTICATED' && Boolean(customerId),
+    revision: ledgerRevision,
+    cachePrefix,
+    dedupingInterval: 2000,
+  });
+
+  const items = useMemo(
+    () =>
+      pages.flatMap((page) =>
+        page.items.map((entry) =>
+          toLedgerItemProps(entry, {
+            subtitleStyle: mode === 'preview' ? 'date-time' : 'time',
+            locale,
+          }),
+        ),
+      ),
+    [locale, mode, pages],
+  );
+
+  const nextCursor =
+    pages.length > 0 ? pages[pages.length - 1]?.nextCursor ?? null : null;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setError(null);
     try {
-      await fetchPage({ replace: true });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t(locale, 'ledger.refreshError'),
-      );
+      await mutate();
     } finally {
       setRefreshing(false);
     }
-  }, [fetchPage, locale]);
+  }, [mutate]);
 
-  const onEndReached = useCallback(async () => {
-    if (mode !== 'scroll' || !nextCursor || loadingMore || loading) return;
-    setLoadingMore(true);
-    try {
-      await fetchPage({ cursor: nextCursor, replace: false });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t(locale, 'ledger.loadMoreError'),
-      );
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [fetchPage, loading, loadingMore, locale, mode, nextCursor]);
+  const onEndReached = useCallback(() => {
+    if (mode !== 'scroll' || !nextCursor || isLoadingMore || isLoading) return;
+    setSize((n) => n + 1);
+  }, [isLoading, isLoadingMore, mode, nextCursor, setSize]);
 
   const displayItems = useMemo(
     () => (mode === 'preview' ? items.slice(0, limit) : items),
@@ -354,7 +350,7 @@ export function JazaLedger({
     footer: { paddingVertical: spacing.md },
   });
 
-  if (loading && items.length === 0) {
+  if (isLoading && items.length === 0) {
     return (
       <View style={styles.root}>
         <LedgerListSkeleton
@@ -372,8 +368,8 @@ export function JazaLedger({
       <View style={styles.root}>
         <LedgerPlaceholder
           title={t(locale, 'ledger.errorTitle')}
-          message={error}
-          onRetry={() => void loadInitial()}
+          message={error.message || t(locale, 'ledger.loadError')}
+          onRetry={() => void mutate()}
         />
       </View>
     );
@@ -418,7 +414,7 @@ export function JazaLedger({
             showDateLabel={showDateLabels}
           />
         )}
-        onEndReached={() => void onEndReached()}
+        onEndReached={() => onEndReached()}
         onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
@@ -428,7 +424,7 @@ export function JazaLedger({
           />
         }
         ListFooterComponent={
-          loadingMore ? (
+          isLoadingMore ? (
             <View style={styles.footer}>
               <ActivityIndicator color={colors.primary} />
             </View>

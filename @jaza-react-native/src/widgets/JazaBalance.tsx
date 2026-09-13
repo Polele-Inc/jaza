@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import {
   StyleSheet,
   Text,
@@ -33,10 +33,6 @@ export function JazaBalance({ style, children }: JazaBalanceProps) {
     refreshBalance,
   } = useJaza();
   const { colors, spacing, radius } = theme;
-
-  useEffect(() => {
-    void refreshBalance();
-  }, [refreshBalance]);
 
   const renderProps: JazaBalanceRenderProps = {
     balanceCredits,
@@ -80,7 +76,13 @@ export function JazaBalance({ style, children }: JazaBalanceProps) {
   });
 
   if (balanceLoading && balanceCredits === null) {
-    return <BalanceCardSkeleton theme={theme} style={style} accessibilityLabel={t(locale, 'balance.loading')} />;
+    return (
+      <BalanceCardSkeleton
+        theme={theme}
+        style={style}
+        accessibilityLabel={t(locale, 'balance.loading')}
+      />
+    );
   }
 
   return (

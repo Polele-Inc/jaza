@@ -17,6 +17,7 @@ export default defineConfig({
     '@gorhom/bottom-sheet',
     '@expo/vector-icons',
     '@shopify/flash-list',
+    '@react-native-async-storage/async-storage',
   ],
   outExtension({ format }) {
     return { js: format === 'cjs' ? '.cjs' : '.js' };

@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import { jazaCache, type RevalidateOptions } from './createCache.js';
+import {
+  EMPTY_SNAPSHOT,
+  jazaCache,
+  type RevalidateOptions,
+  type ResourceSnapshot,
+} from './createCache.js';
 
 export type UseResourceOptions = RevalidateOptions & {
   /** Web: revalidate on window focus / visibility. Default false. */
@@ -38,22 +43,9 @@ export function useResource<T>(
     [key],
   );
 
-  const getSnapshot = useCallback(() => {
-    if (!key) {
-      return {
-        data: undefined as T | undefined,
-        error: undefined as Error | undefined,
-        validating: false,
-        version: 0,
-      };
-    }
-    const entry = jazaCache.getEntry<T>(key);
-    return {
-      data: entry.data,
-      error: entry.error,
-      validating: Boolean(entry.promise),
-      version: entry.updatedAt,
-    };
+  const getSnapshot = useCallback((): ResourceSnapshot<T> => {
+    if (!key) return EMPTY_SNAPSHOT as ResourceSnapshot<T>;
+    return jazaCache.getSnapshot<T>(key);
   }, [key]);
 
   const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

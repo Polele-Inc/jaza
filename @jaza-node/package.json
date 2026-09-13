@@ -1,6 +1,6 @@
 {
   "name": "@jazadev/node",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Official Node.js SDK for Jaza prepaid / metered billing",
   "license": "MIT",
   "author": "Jaza",
@@ -47,11 +47,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/josumung999/jaza-packages.git",
+    "url": "git+https://github.com/Polele-Inc/jaza.git",
     "directory": "@jaza-node"
   },
-  "homepage": "https://github.com/josumung999/jaza-packages/tree/main/@jaza-node",
+  "homepage": "https://github.com/Polele-Inc/jaza/tree/main/@jaza-node",
   "bugs": {
-    "url": "https://github.com/josumung999/jaza-packages/issues"
+    "url": "https://github.com/Polele-Inc/jaza/issues"
   }
 }

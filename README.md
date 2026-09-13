@@ -4,7 +4,7 @@ This Turborepo hosts publishable Jaza client libraries (starting with `@jazadev/
 `jaza-api` remains private; these packages call its public HTTP surface.
 
 **npm org:** [`jazadev`](https://www.npmjs.com/org/jazadev)  
-**GitHub:** [josumung999/jaza-packages](https://github.com/josumung999/jaza-packages)
+**GitHub:** [Polele-Inc/jaza](https://github.com/Polele-Inc/jaza)
 
 ## Packages
 

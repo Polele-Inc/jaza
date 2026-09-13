@@ -44,4 +44,17 @@ describe('createCache', () => {
     await cache.revalidate('x', fetcher, { dedupingInterval: 60_000 });
     expect(calls).toBe(1);
   });
+
+  it('getSnapshot returns a stable reference until notify', async () => {
+    const cache = createCache();
+    const a = cache.getSnapshot('stable');
+    const b = cache.getSnapshot('stable');
+    expect(a).toBe(b);
+
+    await cache.mutate('stable', { n: 1 });
+    const c = cache.getSnapshot('stable');
+    expect(c).not.toBe(a);
+    expect(c.data).toEqual({ n: 1 });
+    expect(cache.getSnapshot('stable')).toBe(c);
+  });
 });

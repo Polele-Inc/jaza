@@ -1,6 +1,6 @@
 {
   "name": "@jazadev/react",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Official React web SDK for Jaza (Next.js, Remix, Vite, and more)",
   "license": "MIT",
   "author": "Jaza",
@@ -58,11 +58,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/josumung999/jaza-packages.git",
+    "url": "git+https://github.com/Polele-Inc/jaza.git",
     "directory": "@jaza-react"
   },
-  "homepage": "https://github.com/josumung999/jaza-packages/tree/main/@jaza-react",
+  "homepage": "https://github.com/Polele-Inc/jaza/tree/main/@jaza-react",
   "bugs": {
-    "url": "https://github.com/josumung999/jaza-packages/issues"
+    "url": "https://github.com/Polele-Inc/jaza/issues"
   }
 }

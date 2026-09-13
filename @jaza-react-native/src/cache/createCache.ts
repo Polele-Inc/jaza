@@ -1,3 +1,10 @@
+export type ResourceSnapshot<T = unknown> = {
+  data: T | undefined;
+  error: Error | undefined;
+  validating: boolean;
+  version: number;
+};
+
 export type CacheEntry<T = unknown> = {
   data: T | undefined;
   error: Error | undefined;
@@ -5,6 +12,8 @@ export type CacheEntry<T = unknown> = {
   /** In-flight fetch for dedupe */
   promise?: Promise<T>;
   subscribers: Set<() => void>;
+  /** Stable ref for useSyncExternalStore getSnapshot */
+  snapshot: ResourceSnapshot<T>;
 };
 
 export type MutateUpdater<T> = T | ((current: T | undefined) => T);
@@ -14,9 +23,17 @@ export type RevalidateOptions = {
   dedupingInterval?: number;
 };
 
+export const EMPTY_SNAPSHOT: ResourceSnapshot = Object.freeze({
+  data: undefined,
+  error: undefined,
+  validating: false,
+  version: 0,
+});
+
 export type CacheStore = {
   subscribe: (key: string, listener: () => void) => () => void;
   getEntry: <T>(key: string) => CacheEntry<T>;
+  getSnapshot: <T>(key: string) => ResourceSnapshot<T>;
   revalidate: <T>(
     key: string,
     fetcher: () => Promise<T>,
@@ -33,6 +50,15 @@ export type CacheStore = {
   clearPrefix: (prefix: string) => void;
 };
 
+function makeSnapshot<T>(entry: CacheEntry<T>): ResourceSnapshot<T> {
+  return {
+    data: entry.data,
+    error: entry.error,
+    validating: Boolean(entry.promise),
+    version: entry.updatedAt,
+  };
+}
+
 function ensureEntry<T>(
   map: Map<string, CacheEntry<unknown>>,
   key: string,
@@ -44,6 +70,7 @@ function ensureEntry<T>(
       error: undefined,
       updatedAt: 0,
       subscribers: new Set(),
+      snapshot: EMPTY_SNAPSHOT as ResourceSnapshot<T>,
     };
     map.set(key, entry as CacheEntry<unknown>);
   }
@@ -51,6 +78,7 @@ function ensureEntry<T>(
 }
 
 function notify(entry: CacheEntry<unknown>) {
+  entry.snapshot = makeSnapshot(entry);
   for (const listener of entry.subscribers) {
     listener();
   }
@@ -70,6 +98,10 @@ export function createCache(): CacheStore {
 
     getEntry<T>(key: string) {
       return ensureEntry<T>(map, key);
+    },
+
+    getSnapshot<T>(key: string) {
+      return ensureEntry<T>(map, key).snapshot;
     },
 
     async revalidate<T>(

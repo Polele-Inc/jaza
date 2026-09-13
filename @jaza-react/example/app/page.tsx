@@ -73,6 +73,7 @@ export default function SignInPage() {
 
   return (
     <main
+      suppressHydrationWarning
       style={{
         minHeight: '100vh',
         display: 'grid',

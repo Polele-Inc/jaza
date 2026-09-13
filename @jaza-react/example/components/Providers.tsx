@@ -3,44 +3,55 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  darkTheme,
   JazaProvider,
-  lightTheme,
   type InitResult,
 } from '@jazadev/react';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { AppPrefsProvider, useAppPrefs } from '@/lib/app-prefs';
 import { apiFetch } from '@/lib/api';
 
+/** Neutral shell — avoid theme/OS branching on the first paint (hydration-safe). */
+function BootShell({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <div
+      suppressHydrationWarning
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: '#f7f9f8',
+        color: '#006b5f',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { session, loading, signOut, setAuthError } = useAuth();
   const { themePreference, locale } = useAppPrefs();
   const pathname = usePathname();
   const router = useRouter();
-  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>('light');
+  // Defer auth-dependent tree until after mount so SSR HTML always matches
+  // the first client render (session lives in localStorage only).
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    setSystemScheme(mq.matches ? 'dark' : 'light');
-    const onChange = () => setSystemScheme(mq.matches ? 'dark' : 'light');
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    setReady(true);
   }, []);
-
-  const resolvedMode =
-    themePreference === 'system' ? systemScheme : themePreference;
-  const chrome = resolvedMode === 'dark' ? darkTheme : lightTheme;
 
   const onSignInRoute = pathname === '/';
 
   useEffect(() => {
-    if (loading) return;
+    if (!ready || loading) return;
     if (!session && !onSignInRoute) {
       router.replace('/');
     } else if (session && onSignInRoute) {
       router.replace('/home');
     }
-  }, [session, loading, onSignInRoute, router]);
+  }, [ready, session, loading, onSignInRoute, router]);
 
   const getSession = useCallback(async (): Promise<InitResult> => {
     if (!session) throw new Error('Not signed in');
@@ -70,36 +81,13 @@ function AuthGate({ children }: { children: ReactNode }) {
     [router, setAuthError, signOut],
   );
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          background: chrome.colors.background,
-          color: chrome.colors.primary,
-        }}
-      >
-        Loading…
-      </div>
-    );
+  if (!ready || loading) {
+    return <BootShell />;
   }
 
   if (!session) {
     if (!onSignInRoute) {
-      return (
-        <div
-          style={{
-            minHeight: '100vh',
-            display: 'grid',
-            placeItems: 'center',
-            background: chrome.colors.background,
-          }}
-        >
-          Loading…
-        </div>
-      );
+      return <BootShell />;
     }
     return <>{children}</>;
   }

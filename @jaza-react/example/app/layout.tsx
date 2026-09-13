@@ -6,14 +6,19 @@ export const metadata = {
   title: 'Jaza React example',
   description: 'Next.js sample for @jazadev/react with local BFF routes',
   icons: {
-    icon: [{ url: '/icon.svg' }, { url: '/icon.png', sizes: '32x32', type: 'image/png' }],
+    icon: [
+      { url: '/icon.svg' },
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+    ],
   },
 };
 
+/** suppressHydrationWarning on html/body: extensions (Grammarly, etc.) inject attrs. */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         style={{
           margin: 0,
           position: 'relative',

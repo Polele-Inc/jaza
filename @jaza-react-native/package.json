@@ -1,6 +1,6 @@
 {
   "name": "@jazadev/react-native",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Official React Native / Expo SDK for Jaza",
   "license": "MIT",
   "author": "Jaza",
@@ -73,11 +73,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/josumung999/jaza-packages.git",
+    "url": "git+https://github.com/Polele-Inc/jaza.git",
     "directory": "@jaza-react-native"
   },
-  "homepage": "https://github.com/josumung999/jaza-packages/tree/main/@jaza-react-native",
+  "homepage": "https://github.com/Polele-Inc/jaza/tree/main/@jaza-react-native",
   "bugs": {
-    "url": "https://github.com/josumung999/jaza-packages/issues"
+    "url": "https://github.com/Polele-Inc/jaza/issues"
   }
 }

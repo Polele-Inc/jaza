@@ -44,7 +44,7 @@ export function LedgerListSkeleton({
   accessibilityLabel = 'Loading transactions',
 }: LedgerListSkeletonProps) {
   const { colors, spacing, radius } = theme;
-  const count = rows ?? (mode === 'preview' ? 3 : 5);
+  const count = rows ?? (mode === 'preview' ? 5 : 15);
 
   const styles = StyleSheet.create({
     root: {

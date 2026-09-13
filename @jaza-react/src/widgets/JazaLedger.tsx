@@ -363,13 +363,18 @@ export function JazaLedger({
     ...style,
   };
 
-  if (isLoading && items.length === 0) {
+  const skeletonRows = mode === 'preview' ? limit : Math.max(limit, 15);
+  const awaitingSession = status !== 'AUTHENTICATED' || !customerId;
+  const showSkeleton =
+    items.length === 0 && !error && (isLoading || awaitingSession);
+
+  if (showSkeleton) {
     return (
       <div style={rootStyle}>
         <LedgerListSkeleton
           theme={theme}
           mode={mode}
-          rows={mode === 'preview' ? Math.min(limit, 3) : 5}
+          rows={skeletonRows}
           accessibilityLabel={t(locale, 'ledger.loading')}
         />
       </div>

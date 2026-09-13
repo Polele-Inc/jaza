@@ -27,6 +27,7 @@ export function JazaBalance({ style, children }: JazaBalanceProps) {
   const {
     theme,
     locale,
+    status,
     balanceCredits,
     balanceLoading,
     balanceError,
@@ -75,7 +76,15 @@ export function JazaBalance({ style, children }: JazaBalanceProps) {
     },
   });
 
-  if (balanceLoading && balanceCredits === null) {
+  // Prefer skeleton over "—" whenever we don't have a known balance yet.
+  const showSkeleton =
+    balanceCredits === null &&
+    !balanceError &&
+    (balanceLoading ||
+      status === 'INITIALIZING' ||
+      status === 'AUTHENTICATED');
+
+  if (showSkeleton) {
     return (
       <BalanceCardSkeleton
         theme={theme}

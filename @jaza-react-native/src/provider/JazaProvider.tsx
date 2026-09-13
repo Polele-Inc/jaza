@@ -176,7 +176,7 @@ export function JazaProvider({
   const [features, setFeatures] = useState<InitFeature[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(useSessionAuth);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [ledgerRevision, setLedgerRevision] = useState(0);
   const customerIdRef = useRef<string | null>(null);
@@ -204,12 +204,14 @@ export function JazaProvider({
     if (walletResource.error) {
       setBalanceError(walletResource.error.message);
     }
-    setBalanceLoading(
+    const pendingWallet =
+      !walletKey ||
       walletResource.isLoading ||
-        (walletResource.isValidating && walletResource.data === undefined),
-    );
+      (walletResource.isValidating && walletResource.data === undefined);
+    setBalanceLoading(pendingWallet);
   }, [
     useSessionAuth,
+    walletKey,
     walletResource.data,
     walletResource.error,
     walletResource.isLoading,

@@ -1,6 +1,6 @@
 {
   "name": "@jazadev/react",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Official React web SDK for Jaza (Next.js, Remix, Vite, and more)",
   "license": "MIT",
   "author": "Jaza",

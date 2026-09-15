@@ -1,0 +1,23 @@
+{
+  "name": "jaza-hero-demo",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Remotion reel — Nuru sample app top-up demo for jaza.dev hero",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts TopUpDemo out/topup-demo.webm --codec=vp9 --image-format=png --pixel-format=yuva420p --scale=0.5",
+    "render:poster": "remotion still src/index.ts TopUpDemo out/topup-demo-poster.png --frame=20 --image-format=png --scale=0.5",
+    "export:web": "bash scripts/export-web.sh"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.286",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "^4.0.286"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.0"
+  }
+}

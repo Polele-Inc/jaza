@@ -7,13 +7,16 @@
     "@jaza-react",
     "@jaza-react/example",
     "@jaza-react-native",
-    "@jaza-react-native/example"
+    "@jaza-react-native/example",
+    "jaza-hero-demo"
   ],
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "demo:hero": "npm run export:web -w jaza-hero-demo",
+    "demo:hero:studio": "npm run studio -w jaza-hero-demo"
   },
   "devDependencies": {
     "turbo": "^2.5.4"

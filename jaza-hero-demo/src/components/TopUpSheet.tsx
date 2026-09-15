@@ -1,5 +1,25 @@
 import React from "react";
-import { colors } from "../theme";
+import { interpolate } from "remotion";
+import {
+  S,
+  colors,
+  easeOutSoft,
+  easeSpring,
+  font,
+  iconSize,
+  phases,
+  radius,
+  spacing,
+  type,
+} from "../theme";
+import {
+  IconArrowBack,
+  IconBolt,
+  IconCheck,
+  IconCheckCircle,
+  IconExpandMore,
+  IconLock,
+} from "./Icons";
 
 export type SheetPhase =
   | "hidden"
@@ -8,23 +28,66 @@ export type SheetPhase =
   | "processing"
   | "success";
 
+type PressTargets = {
+  continue?: boolean;
+  buy?: boolean;
+  done?: boolean;
+  medium?: boolean;
+};
+
 type TopUpSheetProps = {
   phase: SheetPhase;
-  sheetY: number; // 0 = fully open, 1 = off-screen
+  sheetY: number;
   mediumSelected: boolean;
   phoneDigits: string;
   frame: number;
-  opacity?: number;
+  press?: PressTargets;
 };
-
-const font =
-  'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 const packs = [
   { id: "starter", label: "Starter", credits: "100", price: "$1.00" },
-  { id: "medium", label: "Medium", credits: "550", price: "$5.00", hot: true },
+  { id: "medium", label: "Medium", credits: "550", price: "$5.00" },
   { id: "pro", label: "Pro", credits: "1,200", price: "$10.00" },
 ] as const;
+
+function stepMotion(
+  frame: number,
+  active: boolean,
+  appearAt: number,
+  exitAt?: number,
+) {
+  const enterEnd = appearAt + 16;
+  let opacity = 0;
+  let y = 24;
+
+  if (active || (exitAt != null && frame >= appearAt && frame < exitAt + 14)) {
+    opacity = interpolate(frame, [appearAt, enterEnd], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easeOutSoft,
+    });
+    y = interpolate(frame, [appearAt, enterEnd], [28, 0], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easeOutSoft,
+    });
+  }
+
+  if (exitAt != null && frame >= exitAt) {
+    opacity = interpolate(frame, [exitAt, exitAt + 12], [1, 0], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easeOutSoft,
+    });
+    y = interpolate(frame, [exitAt, exitAt + 12], [0, -16], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easeOutSoft,
+    });
+  }
+
+  return { opacity, translate: `0 ${y}px` };
+}
 
 export const TopUpSheet: React.FC<TopUpSheetProps> = ({
   phase,
@@ -32,11 +95,49 @@ export const TopUpSheet: React.FC<TopUpSheetProps> = ({
   mediumSelected,
   phoneDigits,
   frame,
-  opacity = 1,
+  press,
 }) => {
-  if (phase === "hidden") return null;
+  if (phase === "hidden" && sheetY >= 0.99) return null;
 
-  const translateY = sheetY * 900;
+  const showShell = phase !== "hidden" || sheetY < 0.99;
+  if (!showShell) return null;
+
+  const offerM = stepMotion(
+    frame,
+    phase === "offer",
+    phases.sheetOffer,
+    phases.payment,
+  );
+  const paymentM = stepMotion(
+    frame,
+    phase === "payment",
+    phases.payment,
+    phases.processing,
+  );
+  const processingM = stepMotion(
+    frame,
+    phase === "processing",
+    phases.processing,
+    phases.success,
+  );
+  const successM = stepMotion(
+    frame,
+    phase === "success",
+    phases.success,
+    phases.homeUpdated,
+  );
+
+  // Offer needs room for pack list; payment hugs content (no empty bottom void)
+  const tall =
+    phase === "offer" ||
+    (phase === "payment" && frame < phases.payment + 8) ||
+    (frame >= phases.sheetOffer && frame < phases.payment);
+
+  const sheetHeight = tall
+    ? "85%"
+    : phase === "payment"
+      ? "auto"
+      : "58%";
 
   return (
     <div
@@ -45,10 +146,8 @@ export const TopUpSheet: React.FC<TopUpSheetProps> = ({
         inset: 0,
         fontFamily: font,
         pointerEvents: "none",
-        opacity,
       }}
     >
-      {/* Scrim */}
       <div
         style={{
           position: "absolute",
@@ -57,66 +156,135 @@ export const TopUpSheet: React.FC<TopUpSheetProps> = ({
         }}
       />
 
-      {/* Sheet */}
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
-          transform: `translateY(${translateY}px)`,
+          translate: `0 ${sheetY * 980}px`,
           backgroundColor: colors.surfaceContainer,
-          borderTopLeftRadius: 36,
-          borderTopRightRadius: 36,
+          borderTopLeftRadius: radius.xl + 8,
+          borderTopRightRadius: radius.xl + 8,
           border: `1px solid ${colors.outlineVariant}`,
           borderBottom: "none",
-          padding: "20px 36px 100px",
-          minHeight: phase === "offer" ? "72%" : "58%",
-          maxHeight: "88%",
+          paddingTop: spacing.sm,
+          paddingLeft: spacing.gutter,
+          paddingRight: spacing.gutter,
+          // Home-indicator clearance only
+          paddingBottom: spacing.sm,
+          height: sheetHeight,
+          maxHeight: "85%",
           display: "flex",
           flexDirection: "column",
-          gap: 20,
+          overflow: "hidden",
         }}
       >
         <div
           style={{
-            width: 64,
-            height: 8,
-            borderRadius: 4,
+            width: Math.round(36 * S),
+            height: Math.round(4 * S),
+            borderRadius: radius.full,
             backgroundColor: colors.outlineVariant,
             alignSelf: "center",
-            marginBottom: 8,
+            marginBottom: spacing.sm,
+            flexShrink: 0,
           }}
         />
 
-        {phase === "offer" ? (
-          <OfferStep mediumSelected={mediumSelected} />
-        ) : null}
-        {phase === "payment" ? <PaymentStep phoneDigits={phoneDigits} /> : null}
-        {phase === "processing" ? <ProcessingStep frame={frame} /> : null}
-        {phase === "success" ? <SuccessStep /> : null}
+        <div
+          style={{
+            position: "relative",
+            flex: phase === "payment" ? undefined : 1,
+            minHeight: phase === "payment" ? undefined : 0,
+          }}
+        >
+          <StepLayer motion={offerM} fill={phase !== "payment"}>
+            <OfferStep
+              mediumSelected={mediumSelected}
+              continuePressed={press?.continue}
+              mediumPressed={press?.medium}
+            />
+          </StepLayer>
+          <StepLayer motion={paymentM} fill={false}>
+            <PaymentStep phoneDigits={phoneDigits} buyPressed={press?.buy} />
+          </StepLayer>
+          <StepLayer motion={processingM} fill={phase !== "payment"}>
+            <ProcessingStep frame={frame} />
+          </StepLayer>
+          <StepLayer motion={successM} fill={phase !== "payment"}>
+            <SuccessStep frame={frame} donePressed={press?.done} />
+          </StepLayer>
+        </div>
       </div>
     </div>
   );
 };
 
-function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
+function StepLayer({
+  motion,
+  children,
+  fill = true,
+}: {
+  motion: { opacity: number; translate: string };
+  children: React.ReactNode;
+  /** When false, participate in normal flow so the sheet can hug content */
+  fill?: boolean;
+}) {
+  if (motion.opacity <= 0.01) return null;
+  return (
+    <div
+      style={{
+        position: fill ? "absolute" : "relative",
+        inset: fill ? 0 : undefined,
+        width: "100%",
+        opacity: motion.opacity,
+        translate: motion.translate,
+        display: "flex",
+        flexDirection: "column",
+        gap: spacing.sm,
+        overflow: "hidden",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function OfferStep({
+  mediumSelected,
+  continuePressed,
+  mediumPressed,
+}: {
+  mediumSelected: boolean;
+  continuePressed?: boolean;
+  mediumPressed?: boolean;
+}) {
   return (
     <>
       <BalanceMini credits="1,250" />
       <h2
         style={{
-          margin: "8px 0 0",
-          fontSize: 36,
-          fontWeight: 700,
+          margin: `${spacing.sm}px 0 0`,
+          fontSize: type.title,
+          fontWeight: 600,
           color: colors.onSurface,
         }}
       >
         Top-up Credits
       </h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: spacing.sm,
+          flex: 1,
+          overflow: "hidden",
+        }}
+      >
         {packs.map((p) => {
           const selected = mediumSelected && p.id === "medium";
+          const pressed = mediumPressed && p.id === "medium";
           return (
             <div
               key={p.id}
@@ -124,30 +292,32 @@ function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "22px 26px",
-                borderRadius: 20,
+                padding: spacing.md,
+                borderRadius: radius.xl,
                 backgroundColor: colors.surfaceContainerLow,
-                border: `2px solid ${
+                border: `${selected ? 3 : 2}px solid ${
                   selected ? colors.bundleBorderSelected : colors.bundleBorder
                 }`,
-                boxShadow: selected ? `0 0 0 2px ${colors.primary}33` : "none",
+                scale: pressed ? 0.98 : 1,
               }}
             >
               <div>
                 <p
                   style={{
                     margin: 0,
-                    fontSize: 28,
+                    fontSize: type.body,
                     fontWeight: 700,
-                    color: selected ? colors.primaryContainer : colors.onSurface,
+                    color: selected
+                      ? colors.primaryContainer
+                      : colors.onSurface,
                   }}
                 >
                   {p.label}
                 </p>
                 <p
                   style={{
-                    margin: "4px 0 0",
-                    fontSize: 22,
+                    margin: `${spacing.xs}px 0 0`,
+                    fontSize: type.label,
                     color: colors.onSurfaceVariant,
                   }}
                 >
@@ -157,7 +327,7 @@ function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
               <p
                 style={{
                   margin: 0,
-                  fontSize: 28,
+                  fontSize: type.body,
                   fontWeight: 600,
                   color: colors.onSurface,
                 }}
@@ -170,9 +340,10 @@ function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
       </div>
       <div
         style={{
-          marginTop: 12,
-          height: 72,
-          borderRadius: 999,
+          marginTop: spacing.sm,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.md,
+          borderRadius: radius.full,
           backgroundColor: mediumSelected
             ? colors.primaryContainer
             : colors.surfaceContainerHigh,
@@ -183,8 +354,10 @@ function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 28,
+          fontSize: type.body,
           fontWeight: 700,
+          scale: continuePressed ? 0.96 : 1,
+          flexShrink: 0,
         }}
       >
         Continue with Medium
@@ -193,7 +366,19 @@ function OfferStep({ mediumSelected }: { mediumSelected: boolean }) {
   );
 }
 
-function PaymentStep({ phoneDigits }: { phoneDigits: string }) {
+function PaymentStep({
+  phoneDigits,
+  buyPressed,
+}: {
+  phoneDigits: string;
+  buyPressed?: boolean;
+}) {
+  const predicted = phoneDigits.length >= 6;
+  const canSubmit = predicted;
+  const fieldMinH = Math.round(64 * S);
+  const labelSize = Math.round(12 * S);
+  const dialSize = Math.round(18 * S);
+
   return (
     <>
       <div
@@ -201,12 +386,45 @@ function PaymentStep({ phoneDigits }: { phoneDigits: string }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          marginBottom: spacing.lg,
+          flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 32, color: colors.onSurfaceVariant }}>←</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: spacing.sm,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              width: Math.round(40 * S),
+              height: Math.round(40 * S),
+              borderRadius: radius.full,
+              backgroundColor: colors.surfaceContainer,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <IconArrowBack
+              size={iconSize.back}
+              color={colors.onSurfaceVariant}
+            />
+          </div>
           <span
-            style={{ fontSize: 32, fontWeight: 700, color: colors.onSurface }}
+            style={{
+              fontSize: type.title,
+              fontWeight: 600,
+              color: colors.onSurface,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
           >
             Medium
           </span>
@@ -215,34 +433,141 @@ function PaymentStep({ phoneDigits }: { phoneDigits: string }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "10px 18px",
-            borderRadius: 999,
-            backgroundColor: colors.surfaceContainerHigh,
-            fontSize: 22,
-            fontWeight: 600,
+            gap: spacing.xs,
+            paddingLeft: spacing.sm,
+            paddingRight: spacing.sm,
+            paddingTop: spacing.xs,
+            paddingBottom: spacing.xs,
+            borderRadius: radius.full,
+            backgroundColor: colors.surfaceContainer,
+            fontSize: labelSize,
+            fontWeight: 500,
             color: colors.primary,
+            flexShrink: 0,
           }}
         >
-          ✦ 1,250
+          <IconBolt size={iconSize.boltSm} color={colors.primary} />
+          1,250
         </div>
       </div>
 
-      <Field label="Country" value="+254" chevron />
-      <Field
-        label="Phone Number"
-        value={phoneDigits || "Enter number"}
-        placeholder={!phoneDigits}
-        focused
-      />
+      {/* PhoneDigitInput: Country + Phone on one row */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "stretch",
+          gap: spacing.sm,
+          width: "100%",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            flexShrink: 0,
+            minWidth: Math.round(100 * S),
+            backgroundColor: colors.surfaceContainerHigh,
+            borderRadius: radius.lg,
+            paddingLeft: spacing.md,
+            paddingRight: spacing.md,
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.sm,
+            minHeight: fieldMinH,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            style={{
+              color: colors.onSurfaceVariant,
+              fontSize: labelSize,
+              fontWeight: 500,
+              marginBottom: spacing.xs,
+            }}
+          >
+            Country
+          </span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: spacing.xs,
+            }}
+          >
+            <span
+              style={{
+                color: colors.onSurface,
+                fontSize: dialSize,
+                fontWeight: 700,
+              }}
+            >
+              +254
+            </span>
+            <IconExpandMore
+              size={iconSize.chevron}
+              color={colors.onSurfaceVariant}
+            />
+          </div>
+        </div>
 
-      {phoneDigits.length >= 6 ? (
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            backgroundColor: colors.surfaceContainerHigh,
+            borderRadius: radius.lg,
+            paddingLeft: spacing.md,
+            paddingRight: spacing.md,
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.sm,
+            minHeight: fieldMinH,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            border: `1px solid ${colors.primaryContainer}`,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span
+              style={{
+                display: "block",
+                color: colors.onSurfaceVariant,
+                fontSize: labelSize,
+                fontWeight: 500,
+                marginBottom: spacing.xs,
+              }}
+            >
+              Phone Number
+            </span>
+            <span
+              style={{
+                display: "block",
+                color: phoneDigits ? colors.onSurface : colors.onSurfaceVariant,
+                fontSize: Math.round(18 * 1.15 * S),
+                fontWeight: 600,
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1.2,
+              }}
+            >
+              {phoneDigits || "Enter number"}
+            </span>
+          </div>
+          {predicted ? (
+            <IconCheckCircle size={iconSize.chevron} color={colors.primary} />
+          ) : null}
+        </div>
+      </div>
+
+      {predicted ? (
         <p
           style={{
-            margin: 0,
-            fontSize: 24,
+            margin: `${spacing.sm}px 0 0`,
             color: colors.primaryContainer,
-            fontWeight: 600,
+            fontSize: Math.round(14 * S),
+            fontWeight: 500,
+            flexShrink: 0,
           }}
         >
           M-Pesa
@@ -251,48 +576,80 @@ function PaymentStep({ phoneDigits }: { phoneDigits: string }) {
 
       <div
         style={{
-          marginTop: 8,
-          borderRadius: 20,
-          border: `1px solid ${colors.outlineVariant}`,
+          marginTop: spacing.lg,
           backgroundColor: colors.surfaceContainerLow,
-          padding: "22px 26px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          borderRadius: radius.xl,
+          border: `1px solid ${colors.outlineVariant}`,
+          padding: spacing.md,
+          flexShrink: 0,
         }}
       >
-        <span
-          style={{ fontSize: 28, fontWeight: 700, color: colors.primaryContainer }}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: spacing.md,
+          }}
         >
-          KES
-        </span>
-        <span style={{ fontSize: 28, fontWeight: 600, color: colors.onSurface }}>
-          $5.00
-        </span>
-      </div>
-
-      <div
-        style={{
-          height: 72,
-          borderRadius: 999,
-          backgroundColor:
-            phoneDigits.length >= 9
-              ? colors.primaryContainer
-              : colors.surfaceContainerHigh,
-          color:
-            phoneDigits.length >= 9
-              ? colors.onPrimaryContainer
-              : colors.onSurfaceVariant,
-          opacity: phoneDigits.length >= 9 ? 1 : 0.55,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 28,
-          fontWeight: 700,
-          gap: 10,
-        }}
-      >
-        🔒 Buy $5.00
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: spacing.xs,
+            }}
+          >
+            <span
+              style={{
+                color: colors.primaryContainer,
+                fontSize: dialSize,
+                fontWeight: 600,
+              }}
+            >
+              KES
+            </span>
+            <IconExpandMore
+              size={Math.round(20 * S)}
+              color={colors.primaryContainer}
+            />
+          </div>
+          <span
+            style={{
+              color: colors.onSurface,
+              fontSize: dialSize,
+              fontWeight: 600,
+            }}
+          >
+            $5.00
+          </span>
+        </div>
+        <div
+          style={{
+            backgroundColor: colors.primaryContainer,
+            borderRadius: radius.full,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.md,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            opacity: canSubmit ? 1 : 0.5,
+            scale: buyPressed ? 0.96 : 1,
+          }}
+        >
+          <IconLock size={iconSize.lock} color={colors.onPrimaryContainer} />
+          <span
+            style={{
+              color: colors.onPrimaryContainer,
+              fontSize: type.body,
+              fontWeight: 600,
+            }}
+          >
+            Buy $5.00
+          </span>
+        </div>
       </div>
     </>
   );
@@ -307,25 +664,24 @@ function ProcessingStep({ frame }: { frame: number }) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 28,
-        padding: "80px 20px",
-        minHeight: 520,
+        gap: spacing.md,
+        padding: spacing.lg,
       }}
     >
       <div
         style={{
-          width: 96,
-          height: 96,
+          width: Math.round(48 * 2.35),
+          height: Math.round(48 * 2.35),
           borderRadius: "50%",
-          border: `6px solid ${colors.outlineVariant}`,
+          border: `${Math.round(3 * 2.35)}px solid ${colors.outlineVariant}`,
           borderTopColor: colors.primaryContainer,
-          transform: `rotate(${(frame * 12) % 360}deg)`,
+          rotate: `${(frame * 12) % 360}deg`,
         }}
       />
       <p
         style={{
           margin: 0,
-          fontSize: 36,
+          fontSize: type.title,
           fontWeight: 700,
           color: colors.onSurface,
           textAlign: "center",
@@ -336,7 +692,7 @@ function ProcessingStep({ frame }: { frame: number }) {
       <p
         style={{
           margin: 0,
-          fontSize: 26,
+          fontSize: type.body,
           color: colors.onSurfaceVariant,
           textAlign: "center",
         }}
@@ -347,7 +703,25 @@ function ProcessingStep({ frame }: { frame: number }) {
   );
 }
 
-function SuccessStep() {
+function SuccessStep({
+  frame,
+  donePressed,
+}: {
+  frame: number;
+  donePressed?: boolean;
+}) {
+  const pop = interpolate(
+    frame,
+    [phases.success, phases.success + 18],
+    [0, 1],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easeSpring,
+      output: "perceptual-scale",
+    },
+  );
+
   return (
     <div
       style={{
@@ -356,30 +730,28 @@ function SuccessStep() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 24,
-        padding: "60px 20px 20px",
-        minHeight: 520,
+        gap: spacing.md,
+        padding: spacing.lg,
       }}
     >
       <div
         style={{
-          width: 110,
-          height: 110,
+          width: Math.round(56 * 2.35),
+          height: Math.round(56 * 2.35),
           borderRadius: "50%",
           backgroundColor: "rgba(69,223,164,0.2)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 56,
-          color: colors.success,
+          scale: pop,
         }}
       >
-        ✓
+        <IconCheck size={iconSize.check} color={colors.success} />
       </div>
       <p
         style={{
           margin: 0,
-          fontSize: 36,
+          fontSize: type.title,
           fontWeight: 700,
           color: colors.onSurface,
           textAlign: "center",
@@ -390,7 +762,7 @@ function SuccessStep() {
       <p
         style={{
           margin: 0,
-          fontSize: 26,
+          fontSize: type.body,
           color: colors.onSurfaceVariant,
           textAlign: "center",
           maxWidth: 520,
@@ -400,17 +772,19 @@ function SuccessStep() {
       </p>
       <div
         style={{
-          marginTop: 24,
-          height: 64,
+          marginTop: spacing.md,
           width: "70%",
-          borderRadius: 999,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.md,
+          borderRadius: radius.full,
           backgroundColor: colors.surfaceContainerHigh,
           color: colors.onSurface,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 28,
+          fontSize: type.body,
           fontWeight: 700,
+          scale: donePressed ? 0.96 : 1,
         }}
       >
         Done
@@ -423,86 +797,40 @@ function BalanceMini({ credits }: { credits: string }) {
   return (
     <div
       style={{
-        borderRadius: 20,
+        borderRadius: radius.xl,
         backgroundColor: colors.surfaceContainerLow,
-        border: `1px solid ${colors.outlineVariant}`,
-        padding: "20px 24px",
+        padding: spacing.md,
+        flexShrink: 0,
       }}
     >
       <p
         style={{
           margin: 0,
-          fontSize: 20,
+          fontSize: type.label,
           color: colors.onSurfaceVariant,
-          textTransform: "uppercase" as const,
-          letterSpacing: 0.5,
+          marginBottom: spacing.xs,
         }}
       >
         Current Balance
       </p>
-      <p
-        style={{
-          margin: "8px 0 0",
-          fontSize: 40,
-          fontWeight: 700,
-          color: colors.onSurface,
-        }}
-      >
-        <span style={{ color: colors.primary, marginRight: 8, fontWeight: 700 }}>
-          ✦
-        </span>
-        {credits}
-      </p>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  chevron,
-  placeholder,
-  focused,
-}: {
-  label: string;
-  value: string;
-  chevron?: boolean;
-  placeholder?: boolean;
-  focused?: boolean;
-}) {
-  return (
-    <div>
-      <p
-        style={{
-          margin: "0 0 10px",
-          fontSize: 22,
-          fontWeight: 600,
-          color: colors.onSurfaceVariant,
-        }}
-      >
-        {label}
-      </p>
       <div
         style={{
-          height: 72,
-          borderRadius: 16,
-          border: `2px solid ${
-            focused ? colors.primaryContainer : colors.outlineVariant
-          }`,
-          backgroundColor: colors.surfaceContainerLow,
-          padding: "0 22px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: 28,
-          fontWeight: 600,
-          color: placeholder ? colors.mutedDim : colors.onSurface,
+          gap: spacing.sm,
         }}
       >
-        <span>{value}</span>
-        {chevron ? (
-          <span style={{ color: colors.onSurfaceVariant }}>▾</span>
-        ) : null}
+        <IconBolt size={iconSize.bolt} color={colors.primary} />
+        <span
+          style={{
+            fontSize: Math.round(36 * 2.35),
+            fontWeight: 700,
+            color: colors.onSurface,
+            letterSpacing: -1,
+          }}
+        >
+          {credits}
+        </span>
       </div>
     </div>
   );

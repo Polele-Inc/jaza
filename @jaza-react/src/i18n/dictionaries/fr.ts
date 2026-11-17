@@ -38,6 +38,8 @@ export const fr: MessageDictionary = {
   'ledger.kind.topUp': 'Recharge',
   'ledger.kind.purchase': 'Achat',
   'ledger.kind.refund': 'Remboursement',
+  'ledger.kind.bonus': 'Bonus',
+  'ledger.kind.migration': 'Transfert',
   'ledger.title.mobileMoney': 'Mobile Money',
   'ledger.status.completed': 'Terminé',
   'ledger.section.today': 'Aujourd’hui',

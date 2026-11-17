@@ -90,13 +90,18 @@ export type InitFeature = {
 
 export type InitLedgerItem = {
   id: string;
-  type: 'TOP_UP' | 'CONSUMPTION' | 'REFUND' | string;
+  type: 'TOP_UP' | 'CONSUMPTION' | 'REFUND' | 'ADJUSTMENT' | 'MIGRATION' | string;
   credits: number;
   description?: string;
   /** Payment provider display name for top-ups */
   provider?: string;
   featureCode?: string;
   featureName?: string;
+  /** Server credits (host balance, refunds, migrations, welcome). */
+  source?: 'external';
+  kind?: 'EXTERNAL_TOP_UP' | 'REFUND' | 'MIGRATION' | 'ADJUSTMENT' | string;
+  /** Host-supplied ledger title for external credits. */
+  title?: string;
   createdAt: string;
 };
 

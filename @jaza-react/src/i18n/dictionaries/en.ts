@@ -36,6 +36,8 @@ export const en: MessageDictionary = {
   'ledger.kind.topUp': 'Top-up',
   'ledger.kind.purchase': 'Purchase',
   'ledger.kind.refund': 'Refund',
+  'ledger.kind.bonus': 'Bonus',
+  'ledger.kind.migration': 'Transfer',
   'ledger.title.mobileMoney': 'Mobile Money',
   'ledger.status.completed': 'Completed',
   'ledger.section.today': 'Today',

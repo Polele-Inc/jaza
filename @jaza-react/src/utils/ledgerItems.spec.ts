@@ -28,6 +28,20 @@ describe('ledgerTitleLabel', () => {
     ).toBe('Send message');
   });
 
+  it('prefers host title for external credits', () => {
+    expect(
+      ledgerTitleLabel({
+        id: 'w1',
+        type: 'ADJUSTMENT',
+        credits: 1000,
+        title: 'Welcome credits',
+        kind: 'ADJUSTMENT',
+        source: 'external',
+        createdAt: '2026-09-05T12:00:00.000Z',
+      }),
+    ).toBe('Welcome credits');
+  });
+
   it('truncates titles longer than 20 characters', () => {
     expect(
       ledgerTitleLabel({

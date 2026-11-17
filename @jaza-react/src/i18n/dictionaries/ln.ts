@@ -38,6 +38,8 @@ export const ln: MessageDictionary = {
   'ledger.kind.topUp': 'Bakiseli',
   'ledger.kind.purchase': 'Sombeli',
   'ledger.kind.refund': 'Bozongisi',
+  'ledger.kind.bonus': 'Bonus',
+  'ledger.kind.migration': 'Bobongoli',
   'ledger.title.mobileMoney': 'Mobile Money',
   'ledger.status.completed': 'Esili',
   'ledger.section.today': 'Lelo',

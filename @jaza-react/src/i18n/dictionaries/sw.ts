@@ -38,6 +38,8 @@ export const sw: MessageDictionary = {
   'ledger.kind.topUp': 'Ongezo',
   'ledger.kind.purchase': 'Ununuzi',
   'ledger.kind.refund': 'Rejesho',
+  'ledger.kind.bonus': 'Bonasi',
+  'ledger.kind.migration': 'Uhamisho',
   'ledger.title.mobileMoney': 'Mobile Money',
   'ledger.status.completed': 'Imekamilika',
   'ledger.section.today': 'Leo',

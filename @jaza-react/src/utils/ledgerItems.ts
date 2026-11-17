@@ -53,13 +53,17 @@ export function ledgerKindLabel(type: string, locale: JazaLocale = 'en'): string
       return t(locale, 'ledger.kind.purchase');
     case 'REFUND':
       return t(locale, 'ledger.kind.refund');
+    case 'ADJUSTMENT':
+      return t(locale, 'ledger.kind.bonus');
+    case 'MIGRATION':
+      return t(locale, 'ledger.kind.migration');
     default:
       return type;
   }
 }
 
 /**
- * Primary title: provider (top-up) or feature (consumption).
+ * Primary title: provider (top-up), host title (external), or feature (consumption).
  * Capped at 20 characters so the amount stays visible.
  */
 export function ledgerTitleLabel(
@@ -67,7 +71,10 @@ export function ledgerTitleLabel(
   locale: JazaLocale = 'en',
 ): string {
   let label: string;
-  if (entry.type === 'TOP_UP') {
+  const externalTitle = entry.title?.trim();
+  if (externalTitle) {
+    label = externalTitle;
+  } else if (entry.type === 'TOP_UP') {
     label =
       entry.provider?.trim() || t(locale, 'ledger.title.mobileMoney');
   } else if (entry.type === 'CONSUMPTION') {
@@ -78,6 +85,10 @@ export function ledgerTitleLabel(
       t(locale, 'ledger.kind.purchase');
   } else if (entry.type === 'REFUND') {
     label = entry.description?.trim() || t(locale, 'ledger.kind.refund');
+  } else if (entry.type === 'ADJUSTMENT') {
+    label = entry.description?.trim() || t(locale, 'ledger.kind.bonus');
+  } else if (entry.type === 'MIGRATION') {
+    label = entry.description?.trim() || t(locale, 'ledger.kind.migration');
   } else {
     label = entry.description?.trim() || entry.type;
   }

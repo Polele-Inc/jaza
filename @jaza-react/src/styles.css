@@ -341,7 +341,7 @@
 }
 
 .jaza-skeleton {
-  background-color: var(--jaza-skeleton, #2a2c2c);
+  background-color: var(--jaza-skeleton, #1b1e1e);
   overflow: hidden;
   position: relative;
 }
@@ -350,17 +350,17 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-color: var(--jaza-skeleton-highlight, #3a3d3d);
-  animation: jaza-pulse 1.2s ease-in-out infinite;
+  background-color: var(--jaza-skeleton-highlight, #232727);
+  animation: jaza-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes jaza-pulse {
   0%,
   100% {
-    opacity: 0.45;
+    opacity: 0.2;
   }
   50% {
-    opacity: 0.85;
+    opacity: 0.6;
   }
 }
 

@@ -84,8 +84,9 @@ export const darkTheme: JazaTheme = {
     bundleBorder: '#262626',
     bundleBorderSelected: '#2dd4bf',
     bundleBg: '#111111',
-    skeleton: '#2a2c2c',
-    skeletonHighlight: '#3a3d3d',
+    // Soft on the dark background: a small step up from #121414, no bright flash.
+    skeleton: '#1b1e1e',
+    skeletonHighlight: '#232727',
   },
 };
 
@@ -121,8 +122,8 @@ export const lightTheme: JazaTheme = {
     bundleBorder: '#d0d9d5',
     bundleBorderSelected: '#006b5f',
     bundleBg: '#ffffff',
-    skeleton: '#e4eae8',
-    skeletonHighlight: '#f4f7f6',
+    skeleton: '#edf1ef',
+    skeletonHighlight: '#f5f8f7',
   },
 };
 

@@ -34,7 +34,8 @@ export function Skeleton({
     const loop = Animated.loop(
       Animated.timing(pulse, {
         toValue: 1,
-        duration: 1200,
+        // Slow, gentle breathing rather than a blink.
+        duration: 1800,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }),
@@ -45,7 +46,7 @@ export function Skeleton({
 
   const opacity = pulse.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0.45, 0.85, 0.45],
+    outputRange: [0.2, 0.6, 0.2],
   });
 
   const styles = StyleSheet.create({

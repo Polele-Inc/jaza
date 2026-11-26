@@ -25,10 +25,11 @@ export function OfferStep() {
     paywallFeatureCode,
     getFeatureCost,
     features,
+    isLowBalance,
   } = useJaza();
   const { colors, spacing, radius } = theme;
 
-  const showLowBalanceAlert = topUpSource === 'paywall';
+  const showLowBalanceAlert = topUpSource === 'paywall' || isLowBalance;
   const paywallFeature = paywallFeatureCode
     ? features.find((f) => f.code === paywallFeatureCode)
     : undefined;

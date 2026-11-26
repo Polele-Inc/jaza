@@ -113,6 +113,8 @@ export type InitResult = {
   wallet: { balanceCredits: number };
   features: InitFeature[];
   ledger?: { items: InitLedgerItem[]; nextCursor?: string | null };
+  /** App setting: warn when wallet balance is at or below this value. */
+  lowBalanceThresholdCredits?: number;
 };
 
 export type ClientWallet = {

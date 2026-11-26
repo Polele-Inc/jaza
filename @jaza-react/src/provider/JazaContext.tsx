@@ -53,6 +53,12 @@ export type JazaContextValue = {
   customerId: string | null;
   /** Features from last init snapshot (empty until session auth) */
   features: InitFeature[];
+  /**
+   * App low-balance threshold from last init (null until session auth or if omitted).
+   */
+  lowBalanceThresholdCredits: number | null;
+  /** True when balance is known and at/below the app threshold. */
+  isLowBalance: boolean;
   getFeatureCost: (featureCode: string) => number | null;
   canAfford: (featureCodeOrCredits: string | number) => boolean;
   /** Alias of sheet open — paywall is the top-up sheet in v1 */

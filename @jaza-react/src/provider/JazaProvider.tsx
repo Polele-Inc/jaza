@@ -185,6 +185,9 @@ export function JazaProvider({
   );
   const [authError, setAuthError] = useState<string | null>(null);
   const [features, setFeatures] = useState<InitFeature[]>([]);
+  const [lowBalanceThresholdCredits, setLowBalanceThresholdCredits] = useState<
+    number | null
+  >(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(useSessionAuth);
@@ -235,6 +238,14 @@ export function JazaProvider({
       setCustomerId(result.customerId);
       customerIdRef.current = result.customerId;
       setFeatures(result.features ?? []);
+      const threshold = result.lowBalanceThresholdCredits;
+      setLowBalanceThresholdCredits(
+        typeof threshold === 'number' &&
+          Number.isFinite(threshold) &&
+          threshold > 0
+          ? Math.floor(threshold)
+          : null,
+      );
       setBalance(result.wallet.balanceCredits);
       void jazaCache.mutate(`wallet:${result.customerId}`, {
         balanceCredits: result.wallet.balanceCredits,
@@ -778,6 +789,11 @@ export function JazaProvider({
       notifyWalletChanged,
       customerId,
       features,
+      lowBalanceThresholdCredits,
+      isLowBalance:
+        balance != null &&
+        lowBalanceThresholdCredits != null &&
+        balance <= lowBalanceThresholdCredits,
       getFeatureCost: getFeatureCostFn,
       canAfford: canAffordFn,
       paywallOpen: sheetOpen,
@@ -835,6 +851,7 @@ export function JazaProvider({
       notifyWalletChanged,
       customerId,
       features,
+      lowBalanceThresholdCredits,
       getFeatureCostFn,
       canAffordFn,
       sheetOpen,
